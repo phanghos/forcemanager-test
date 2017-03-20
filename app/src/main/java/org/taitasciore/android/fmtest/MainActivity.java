@@ -44,10 +44,10 @@ public class MainActivity extends AppCompatActivity implements MainView,
 
     boolean mIsGoogleApiAvailable = true;
     boolean mIsPositionStored = false;
-    boolean mAddedMarkers = false;
     double lat;
     double lon;
     float zoom = DEFAULT_ZOOM;
+    int mBlueMarker = -1;
 
     List<ApiResponse.Metro> stations = new ArrayList<>();
     List<Marker> markers = new ArrayList<>();
@@ -63,20 +63,23 @@ public class MainActivity extends AppCompatActivity implements MainView,
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        startWorkerFragment();
-        checkForGoogleApiAvailability();
 
         tvSorry = (TextView) findViewById(R.id.tvSorry);
 
+        startWorkerFragment();
+        checkForGoogleApiAvailability();
+
         /**
-         * Retrieves saved position (last position before orientation change/rotation)
-         * and zoom level
+         * Retrieves saved position (last position before an orientation change/rotation),
+         * zoom level, and the ID of a blue marker (if any) if a search was performed before the
+         * orientation change
          */
         if (savedInstanceState != null) {
             lat  = savedInstanceState.getDouble("lat");
             lon  = savedInstanceState.getDouble("lon");
             zoom = savedInstanceState.getFloat("zoom");
-            mIsPositionStored = true;
+            mBlueMarker = savedInstanceState.getInt("marker", -1);
+            mIsPositionStored = savedInstanceState.getBoolean("position_stored");
         }
     }
 
@@ -209,8 +212,9 @@ public class MainActivity extends AppCompatActivity implements MainView,
     }
 
     /**
-     * This method saves the current position in the map, as well as the level of zoom
-     * so the map can be restored to its previous state after orientation change/rotation
+     * This method saves the current position in the map, as well as the level of zoom, a ID
+     * of a blue marker (if any) so the map can be restored to its previous state
+     * after orientation change/rotation
      * @param outState
      */
     @Override
@@ -218,10 +222,14 @@ public class MainActivity extends AppCompatActivity implements MainView,
         super.onSaveInstanceState(outState);
         if (mGoogleMap != null) {
             LatLng pos = mGoogleMap.getCameraPosition().target;
-            outState.putDouble("lat", pos.latitude);
-            outState.putDouble("lon", pos.longitude);
+            lat = pos.latitude;
+            lon = pos.longitude;
+            outState.putDouble("lat", lat);
+            outState.putDouble("lon", lon);
             outState.putFloat("zoom", mGoogleMap.getCameraPosition().zoom);
         }
+        outState.putBoolean("position_stored", lat != 0 || lon != 0);
+        outState.putInt("marker", mBlueMarker);
     }
 
     /**
@@ -248,9 +256,9 @@ public class MainActivity extends AppCompatActivity implements MainView,
     public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                ApiResponse.Metro metro = Utils.buildStation(cursor);
-                addMarker(metro);
-                stations.add(metro);
+                ApiResponse.Metro station = Utils.buildStation(cursor);
+                addMarker(station);
+                stations.add(station);
             } while (cursor.moveToNext());
         }
         else
@@ -286,27 +294,33 @@ public class MainActivity extends AppCompatActivity implements MainView,
 
     /**
      * This method adds a marker to the map for the given station
-     * @param m {@link org.taitasciore.android.fmtest.ApiResponse.Metro} instance with its
+     * @param station {@link org.taitasciore.android.fmtest.ApiResponse.Metro} instance with its
      * information so that its corresponding marker can be added
      */
-    private void addMarker(ApiResponse.Metro m) {
-        Log.i("debug", "adding marker");
+    private void addMarker(ApiResponse.Metro station) {
         // Getting station coordinates
-        LatLng coords = new LatLng(m.getLat(), m.getLon());
+        LatLng coords = new LatLng(station.getLat(), station.getLon());
         // Setting up marker and adding it to the map
         Marker marker = mGoogleMap.addMarker(new MarkerOptions().position(coords)
-                .title(m.getName() + " (" + m.getLine() + ")")
+                .title(station.getName() + " (" + station.getLine() + ")")
                 .icon(BitmapDescriptorFactory.defaultMarker(
                         BitmapDescriptorFactory.HUE_RED)));
         // Adding tag to marker so it can be retrived later if it's clicked on
-        marker.setTag(m.getId());
+        marker.setTag(station.getId());
         markers.add(marker);
 
-        if (m.getName().equalsIgnoreCase("catalunya")) {
-            CameraUpdate mCameraUpdate = CameraUpdateFactory.newLatLngZoom(coords, zoom);
-            //mGoogleMap.animateCamera(mCameraUpdate, 3000, null);
+        CameraUpdate mCameraUpdate;
+        zoom = mIsPositionStored ? zoom : DEFAULT_ZOOM;
+        if (station.getName().equalsIgnoreCase("catalunya") && !mIsPositionStored) {
+            mCameraUpdate = CameraUpdateFactory.newLatLngZoom(coords, zoom);
+            mGoogleMap.moveCamera(mCameraUpdate);
+        } else if (mIsPositionStored) {
+            mCameraUpdate = CameraUpdateFactory.newLatLngZoom(new LatLng(lat, lon), zoom);
             mGoogleMap.moveCamera(mCameraUpdate);
         }
+
+        if (mBlueMarker != -1 && mBlueMarker == station.getId())
+            changeMarkerColor(findMarker(mBlueMarker));
     }
 
     /**
@@ -368,8 +382,10 @@ public class MainActivity extends AppCompatActivity implements MainView,
                     Utils.hideKeyboard(MainActivity.this);
                     Cursor cursor = mAdapter.getCursor();
                     resetMarkersColor();
-                    ApiResponse.Metro metro = Utils.buildStation(cursor);
-                    moveCameraSlowly(metro);
+                    ApiResponse.Metro station = Utils.buildStation(cursor);
+                    moveCameraSlowly(station);
+                    Marker marker = findMarker(station.getId());
+                    if (marker != null) changeMarkerColor(marker);
 
                     return true;
                 }
@@ -391,12 +407,12 @@ public class MainActivity extends AppCompatActivity implements MainView,
 
     /**
      * Moves the camera slowly to the coordinates of the given station
-     * @param metro {@link org.taitasciore.android.fmtest.ApiResponse.Metro} instance
+     * @param station {@link org.taitasciore.android.fmtest.ApiResponse.Metro} instance
      * whose coordinates will be extracted to move the camera slowly to the corresponding position
      */
-    private void moveCameraSlowly(ApiResponse.Metro metro) {
-        double lat = metro.getLat();
-        double lon = metro.getLon();
+    private void moveCameraSlowly(ApiResponse.Metro station) {
+        double lat = station.getLat();
+        double lon = station.getLon();
         LatLng coords = new LatLng(lat, lon);
 
         if (mGoogleMap != null) {
@@ -404,8 +420,11 @@ public class MainActivity extends AppCompatActivity implements MainView,
             CameraUpdate mCameraUpdate =
                 CameraUpdateFactory.newLatLngZoom(coords, zoom);
             mGoogleMap.animateCamera(mCameraUpdate, 1000, null);
-            Marker marker = findMarker(metro.getId());
-            if (marker != null) changeMarkerColor(marker);
+            Marker marker = findMarker(station.getId());
+            if (marker != null) {
+                changeMarkerColor(marker);
+                mBlueMarker = station.getId();
+            }
         }
     }
 

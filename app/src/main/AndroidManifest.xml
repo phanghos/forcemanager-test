@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="org.taitasciore.android.fmtest">
 
     <!-- No need to add INTERNET permission since it is included when compiling Retrofit -->
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-sdk tools:overrideLibrary="android.support.design,
+    android.support.constraint, com.afollestad.materialdialogs, android.support.v13,
+    com.google.android.gms.maps, com.google.android.gms.base, com.google.android.gms.tasks,
+    com.google.android.gms" />
 
     <application
         android:name=".App"

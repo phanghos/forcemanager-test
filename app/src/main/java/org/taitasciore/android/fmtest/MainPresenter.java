@@ -40,61 +40,6 @@ public class MainPresenter implements Presenter, ApiService.OnRequestFinishListe
         view.showNetworkProgress();
         if (call != null) return;
         call = service.getSubwayData(this);
-
-        /*
-        service.getApi().getSubwayData()
-                //.compose(RxLoader.<ApiResponse>from((AppCompatActivity) view))
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(AndroidSchedulers.mainThread())
-                    /*
-                    .subscribe(new Observer<ApiResponse>() {
-                        @Override
-                        public void onCompleted() {
-
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-
-                        }
-
-                        @Override
-                        public void onNext(ApiResponse apiResponse) {
-                            Log.i("debug", "network complete");
-                            mIsRequestInProcess = false;
-                            if (view != null) view.hideProgress();
-                            //onSuccess(apiResponse.getData().getMetro());
-                        }
-                    });
-                    */
-        /*
-                .map(new Func1<ApiResponse, List<ApiResponse.Metro>>() {
-                    @Override
-                    public List<ApiResponse.Metro> call(ApiResponse apiResponse) {
-                        return apiResponse.getData().getMetro();
-                    }
-                })
-                .subscribe(new Observer<List<ApiResponse.Metro>>() {
-                    @Override
-                    public void onCompleted() {
-                        view.hideProgress();
-                        view.startLoader();
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        view.hideProgress();
-                    }
-
-                    @Override
-                    public void onNext(List<ApiResponse.Metro> metros) {
-                        ContentResolver cr = ((Activity) view).getContentResolver();
-                        for (ApiResponse.Metro m : metros)
-                            cr.insert(StationsContract.CONTENT_URI, Utils.fillValues(m));
-                        onCompleted();
-                    }
-                });
-        */
     }
 
     /**
@@ -168,14 +113,11 @@ public class MainPresenter implements Presenter, ApiService.OnRequestFinishListe
 
                     }
                 });
-
-        call = null;
     }
 
     @Override
     public void onError() {
         view.hideProgress();
-        call = null;
     }
 
     @Override

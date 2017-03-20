@@ -11,11 +11,12 @@ import android.support.v4.app.Fragment;
 
 /**
  * Using a retained fragment to better handle configuration changes, in particular,
- * screen orientation changes which would destroy ongoing background tasks such as
+ * screen orientation changes which destroy ongoing background tasks such as
  * connections to the API, which would cause the app to crash. I was tempted to add
  * android:screenOrientation="portrait" to the AndroidManifest, which would have made
  * things easier since I would not have had to worry about configuration changes because
- * orientation would be fixed in portrait mode and the activity would not be destroyed
+ * orientation would be fixed in portrait mode and the activity would not be destroyed.
+ * But I wanted to do a good job and so decided to take on the 'challenge'
  */
 public class WorkerFragment extends Fragment {
 
@@ -47,12 +48,12 @@ public class WorkerFragment extends Fragment {
     }
 
     /**
-     * Detaches view from fragment and resenter
+     * Detaches view from fragment and presenter
      */
     @Override
     public void onDetach() {
         super.onDetach();
-        presenter.onViewDetached();
+        if (presenter != null) presenter.onViewDetached();
         view = null;
     }
 

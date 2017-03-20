@@ -66,8 +66,6 @@ public class StationsContentProvider extends ContentProvider {
         if (mUriMatcher.match(uri) == 1) {
             long newRowId = db.insert(StationsContract.StationEntry.TABLE_NAME, null, contentValues);
             if (newRowId > 0) {
-                Uri insertUri = insertUri(newRowId);
-                Log.i("uri", insertUri.getPath() + " - " + insertUri+"");
                 getContext().getContentResolver().notifyChange(uri, null);
                 return insertUri(newRowId);
             }
