@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FM Test</string>
+    <string name="search_hint">Search stations...</string>
+</resources>
